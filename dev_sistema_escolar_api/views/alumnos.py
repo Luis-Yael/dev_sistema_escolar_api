@@ -9,21 +9,21 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth.models import Group
 
-class AdminAll(generics.CreateAPIView):
+
+class AlumnosAll(generics.CreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     def get(self, request, *args, **kwargs):
-        user = request.user
-        #TODO: Regresar perfil del usuario
-        return Response({})
-
-class AdminView(generics.CreateAPIView):
+        alumnos = Alumnos.objects.filter(user__is_active = 1).order_by("id")
+        lista = AlumnoSerializer(alumnos, many=True).data
+        
+        return Response(lista, 200)
+    
+class AlumnosView(generics.CreateAPIView):
     #Registrar nuevo usuario
     @transaction.atomic
     def post(self, request, *args, **kwargs):
 
-        # Serializamos los datos del administrador para volverlo de nuevo JSON
         user = UserSerializer(data=request.data)
-        
         if user.is_valid():
             #Grab user data
             role = request.data['rol']
@@ -45,7 +45,6 @@ class AdminView(generics.CreateAPIView):
 
 
             user.save()
-            #Cifrar la contraseña
             user.set_password(password)
             user.save()
 
@@ -53,15 +52,17 @@ class AdminView(generics.CreateAPIView):
             group.user_set.add(user)
             user.save()
 
-            #Almacenar los datos adicionales del administrador
-            admin = Administradores.objects.create(user=user,
-                                            clave_admin= request.data["clave_admin"],
-                                            telefono= request.data["telefono"],
+            #Create a profile for the user
+            alumno = Alumnos.objects.create(user=user,
+                                            matricula= request.data["matricula"],
+                                            curp= request.data["curp"].upper(),
                                             rfc= request.data["rfc"].upper(),
+                                            fecha_nacimiento= request.data["fecha_nacimiento"],
                                             edad= request.data["edad"],
+                                            telefono= request.data["telefono"],
                                             ocupacion= request.data["ocupacion"])
-            admin.save()
+            alumno.save()
 
-            return Response({"admin_created_id": admin.id }, 201)
+            return Response({"Alumno creado con ID: ": alumno.id }, 201)
 
         return Response(user.errors, status=status.HTTP_400_BAD_REQUEST)
